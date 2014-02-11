@@ -1,30 +1,60 @@
 #ifndef EDGE_BASED_NODE_H
 #define EDGE_BASED_NODE_H
 
-#include <cmath>
-
-#include <boost/assert.hpp>
-
 #include "../Util/MercatorUtil.h"
 #include "../Util/SimpleLogger.h"
 #include "../typedefs.h"
 
 #include <osrm/Coordinate.h>
 
+#include <boost/assert.hpp>
+
+#include <limits>
+
 struct EdgeBasedNode {
 
     EdgeBasedNode() :
-        id(INT_MAX),
-        lat1(INT_MAX),
-        lat2(INT_MAX),
-        lon1(INT_MAX),
-        lon2(INT_MAX >> 1),
+        forward_edge_based_node_id(std::numeric_limits<int>::max()),
+        reverse_edge_based_node_id(std::numeric_limits<int>::max()),
+        lat1(std::numeric_limits<int>::max()),
+        lon1(std::numeric_limits<int>::max()),
+        lat2(std::numeric_limits<int>::max()),
+        lon2(std::numeric_limits<int>::max() >> 1),
         belongsToTinyComponent(false),
-        nameID(UINT_MAX),
-        weight(UINT_MAX >> 1),
-        ignoreInGrid(false)
+        name_id(std::numeric_limits<unsigned>::max()),
+        forward_weight(std::numeric_limits<int>::max() >> 1),
+        reverse_weight(std::numeric_limits<int>::max() >> 1),
+        forward_offset_to_edge_based_node(0),
+        reverse_offset_to_edge_based_node(0)
     { }
 
+    EdgeBasedNode(
+        NodeID forward_edge_based_node_id,
+        NodeID reverse_edge_based_node_id,
+        int lat1,
+        int lon1,
+        int lat2,
+        int lon2,
+        bool belongsToTinyComponent,
+        NodeID name_id,
+        int forward_weight,
+        int reverse_weight,
+        int forward_offset_to_edge_based_node,
+        int reverse_offset_to_edge_based_node
+    ) :
+        forward_edge_based_node_id(forward_edge_based_node_id),
+        reverse_edge_based_node_id(reverse_edge_based_node_id),
+        lat1(lat1),
+        lon1(lon1),
+        lat2(lat2),
+        lon2(lon2),
+        belongsToTinyComponent(belongsToTinyComponent),
+        name_id(name_id),
+        forward_weight(forward_weight),
+        reverse_weight(reverse_weight),
+        forward_offset_to_edge_based_node(forward_offset_to_edge_based_node),
+        reverse_offset_to_edge_based_node(reverse_offset_to_edge_based_node)
+    { }
 
     double ComputePerpendicularDistance(
         const FixedPointCoordinate& query_location,
@@ -32,10 +62,6 @@ struct EdgeBasedNode {
         double & r
     ) const {
         BOOST_ASSERT( query_location.isValid() );
-
-        if( ignoreInGrid ) {
-            return std::numeric_limits<double>::max();
-        }
 
         const double x = lat2y(query_location.lat/COORDINATE_PRECISION);
         const double y = query_location.lon/COORDINATE_PRECISION;
@@ -94,14 +120,6 @@ struct EdgeBasedNode {
         return approximated_distance;
     }
 
-    bool operator<(const EdgeBasedNode & other) const {
-        return other.id < id;
-    }
-
-    bool operator==(const EdgeBasedNode & other) const {
-        return id == other.id;
-    }
-
     inline FixedPointCoordinate Centroid() const {
         FixedPointCoordinate centroid;
         //The coordinates of the midpoint are given by:
@@ -111,15 +129,18 @@ struct EdgeBasedNode {
         return centroid;
     }
 
-    NodeID id;
+    NodeID forward_edge_based_node_id;
+    NodeID reverse_edge_based_node_id;
     int lat1;
-    int lat2;
     int lon1;
+    int lat2;
     int lon2:31;
     bool belongsToTinyComponent:1;
-    NodeID nameID;
-    unsigned weight:31;
-    bool ignoreInGrid:1;
+    NodeID name_id;
+    int forward_weight;
+    int reverse_weight;
+    int forward_offset_to_edge_based_node;
+    int reverse_offset_to_edge_based_node;
 };
 
 #endif //EDGE_BASED_NODE_H
