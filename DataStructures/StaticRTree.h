@@ -82,7 +82,7 @@ public:
         int32_t min_lat, max_lat;
 
         inline void InitializeMBRectangle(
-                const DataT * objects,
+                DataT const * objects,
                 const uint32_t element_count
         ) {
             for(uint32_t i = 0; i < element_count; ++i) {
@@ -221,9 +221,9 @@ public:
         }
 
         inline bool Contains(const FixedPointCoordinate & location) const {
-            bool lats_contained =
+            const bool lats_contained =
                     (location.lat > min_lat) && (location.lat < max_lat);
-            bool lons_contained =
+            const bool lons_contained =
                     (location.lon > min_lon) && (location.lon < max_lon);
             return lats_contained && lons_contained;
         }
@@ -313,11 +313,11 @@ public:
         for(uint64_t element_counter = 0; element_counter < m_element_count; ++element_counter) {
             input_wrapper_vector[element_counter].m_array_index = element_counter;
             //Get Hilbert-Value for centroid in mercartor projection
-            DataT & current_element = input_data_vector[element_counter];
+            DataT const & current_element = input_data_vector[element_counter];
             FixedPointCoordinate current_centroid = current_element.Centroid();
             current_centroid.lat = COORDINATE_PRECISION*lat2y(current_centroid.lat/COORDINATE_PRECISION);
 
-            uint64_t current_hilbert_value = HilbertCode::GetHilbertNumberForCoordinate(current_centroid);
+            const uint64_t current_hilbert_value = HilbertCode::GetHilbertNumberForCoordinate(current_centroid);
             input_wrapper_vector[element_counter].m_hilbert_value = current_hilbert_value;
         }
 
@@ -524,7 +524,7 @@ public:
                         current_leaf_node
                     );
                     for(uint32_t i = 0; i < current_leaf_node.object_count; ++i) {
-                        const DataT & current_edge = current_leaf_node.objects[i];
+                        DataT const & current_edge = current_leaf_node.objects[i];
                         if(
                             ignore_tiny_components &&
                             current_edge.belongsToTinyComponent
