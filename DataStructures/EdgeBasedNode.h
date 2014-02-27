@@ -24,11 +24,12 @@ struct EdgeBasedNode {
         forward_offset(0),
         reverse_offset(0),
         fwd_segment_position( std::numeric_limits<unsigned short>::max() ),
-        rev_segment_position( std::numeric_limits<unsigned short>::max() >> 1 ),
-        belongsToTinyComponent(false)
+        rev_segment_position( std::numeric_limits<unsigned short>::max() >> 2 ),
+        belongsToTinyComponent(false),
+        is_compressed(false)
     { }
 
-    EdgeBasedNode(
+    explicit EdgeBasedNode(
         NodeID forward_edge_based_node_id,
         NodeID reverse_edge_based_node_id,
         NodeID u,
@@ -40,7 +41,8 @@ struct EdgeBasedNode {
         int reverse_offset,
         unsigned short fwd_segment_position,
         unsigned short rev_segment_position,
-        bool belongsToTinyComponent
+        bool belongsToTinyComponent,
+        bool is_compressed
     ) :
         forward_edge_based_node_id(forward_edge_based_node_id),
         reverse_edge_based_node_id(reverse_edge_based_node_id),
@@ -53,8 +55,22 @@ struct EdgeBasedNode {
         reverse_offset(reverse_offset),
         fwd_segment_position(fwd_segment_position),
         rev_segment_position(rev_segment_position),
-        belongsToTinyComponent(belongsToTinyComponent)
-    { }
+        belongsToTinyComponent(belongsToTinyComponent),
+        is_compressed(is_compressed)
+    {
+        BOOST_ASSERT(
+            ( forward_edge_based_node_id != SPECIAL_NODEID ) ||
+            ( reverse_edge_based_node_id != SPECIAL_NODEID )
+        );
+        // if( forward_edge_based_node_id == SPECIAL_NODEID ) {
+        //     using namespace std;
+        //     swap( forward_edge_based_node_id, reverse_edge_based_node_id );
+        //     swap( u, v );
+        //     swap( forward_weight, reverse_weight );
+        //     swap( forward_offset, reverse_offset );
+        //     swap( fwd_segment_position, rev_segment_position );
+        // }
+    }
 
     inline static double ComputePerpendicularDistance(
         const FixedPointCoordinate & coord_a,
@@ -135,7 +151,7 @@ struct EdgeBasedNode {
     }
 
     bool IsCompressed() {
-        return (fwd_segment_position + rev_segment_position) != 0;
+        return is_compressed;
     }
 
     NodeID forward_edge_based_node_id;
@@ -148,8 +164,9 @@ struct EdgeBasedNode {
     int forward_offset;
     int reverse_offset;
     unsigned short fwd_segment_position;
-    unsigned short rev_segment_position:15;
+    unsigned short rev_segment_position:14; //TODO: not actually needed!
     bool belongsToTinyComponent:1;
+    bool is_compressed:1;
 };
 
 #endif //EDGE_BASED_NODE_H
