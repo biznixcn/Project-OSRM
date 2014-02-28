@@ -19,14 +19,13 @@ struct EdgeBasedNode {
         u(SPECIAL_NODEID),
         v(SPECIAL_NODEID),
         name_id(0),
-        forward_weight(std::numeric_limits<int>::max() >> 1),
-        reverse_weight(std::numeric_limits<int>::max() >> 1),
+        forward_weight(INVALID_EDGE_WEIGHT >> 1),
+        reverse_weight(INVALID_EDGE_WEIGHT >> 1),
         forward_offset(0),
         reverse_offset(0),
+        packed_geometry_id(SPECIAL_EDGEID),
         fwd_segment_position( std::numeric_limits<unsigned short>::max() ),
-        rev_segment_position( std::numeric_limits<unsigned short>::max() >> 2 ),
-        belongsToTinyComponent(false),
-        is_compressed(false)
+        belongsToTinyComponent(false)
     { }
 
     explicit EdgeBasedNode(
@@ -39,10 +38,9 @@ struct EdgeBasedNode {
         int reverse_weight,
         int forward_offset,
         int reverse_offset,
+        unsigned packed_geometry_id,
         unsigned short fwd_segment_position,
-        unsigned short rev_segment_position,
-        bool belongsToTinyComponent,
-        bool is_compressed
+        bool belongs_to_tiny_component
     ) :
         forward_edge_based_node_id(forward_edge_based_node_id),
         reverse_edge_based_node_id(reverse_edge_based_node_id),
@@ -53,23 +51,14 @@ struct EdgeBasedNode {
         reverse_weight(reverse_weight),
         forward_offset(forward_offset),
         reverse_offset(reverse_offset),
+        packed_geometry_id(packed_geometry_id),
         fwd_segment_position(fwd_segment_position),
-        rev_segment_position(rev_segment_position),
-        belongsToTinyComponent(belongsToTinyComponent),
-        is_compressed(is_compressed)
+        belongsToTinyComponent(belongs_to_tiny_component)
     {
         BOOST_ASSERT(
             ( forward_edge_based_node_id != SPECIAL_NODEID ) ||
             ( reverse_edge_based_node_id != SPECIAL_NODEID )
         );
-        // if( forward_edge_based_node_id == SPECIAL_NODEID ) {
-        //     using namespace std;
-        //     swap( forward_edge_based_node_id, reverse_edge_based_node_id );
-        //     swap( u, v );
-        //     swap( forward_weight, reverse_weight );
-        //     swap( forward_offset, reverse_offset );
-        //     swap( fwd_segment_position, rev_segment_position );
-        // }
     }
 
     inline static double ComputePerpendicularDistance(
@@ -151,22 +140,21 @@ struct EdgeBasedNode {
     }
 
     bool IsCompressed() {
-        return is_compressed;
+        return packed_geometry_id != SPECIAL_EDGEID;
     }
 
-    NodeID forward_edge_based_node_id;
-    NodeID reverse_edge_based_node_id;
-    NodeID u;
-    NodeID v;
-    unsigned name_id;
-    int forward_weight;
-    int reverse_weight;
-    int forward_offset;
-    int reverse_offset;
-    unsigned short fwd_segment_position;
-    unsigned short rev_segment_position:14; //TODO: not actually needed!
-    bool belongsToTinyComponent:1;
-    bool is_compressed:1;
+    NodeID forward_edge_based_node_id; // needed for edge-expanded graph
+    NodeID reverse_edge_based_node_id; // needed for edge-expanded graph
+    NodeID u;   // indices into the coordinates array
+    NodeID v;   // indices into the coordinates array
+    unsigned name_id;   // id of the edge name
+    int forward_weight; // weight of the edge
+    int reverse_weight; // weight in the other direction (may be different)
+    int forward_offset; // prefix sum of the weight up the edge TODO: short must suffice
+    int reverse_offset; // prefix sum of the weight from the edge TODO: short must suffice
+    unsigned packed_geometry_id; // if set, then the edge represents a packed geometry
+    unsigned short fwd_segment_position; // segment id in a compressed geometry
+    bool belongsToTinyComponent;
 };
 
 #endif //EDGE_BASED_NODE_H
