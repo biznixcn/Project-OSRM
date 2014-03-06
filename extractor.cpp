@@ -43,6 +43,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <cstdlib>
 
+#include <boost/unordered_map.hpp>
+
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -170,7 +172,7 @@ int main (int argc, char *argv[]) {
             }
         }
 
-        StringMap stringMap;
+        boost::unordered_map<std::string, NodeID> stringMap;
         ExtractionContainers externalMemory;
 
         stringMap[""] = 0;
