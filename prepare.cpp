@@ -45,13 +45,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "typedefs.h"
 
 #include <boost/foreach.hpp>
+#include <boost/filesystem.hpp>
+#include <boost/filesystem/fstream.hpp>
 
 #include <luabind/luabind.hpp>
 
-#include <fstream>
-#include <istream>
-#include <iostream>
-#include <cstring>
 #include <string>
 #include <vector>
 
@@ -128,7 +126,7 @@ int main (int argc, char *argv[]) {
         boost::program_options::notify(option_variables);
 
         if(boost::filesystem::is_regular_file(config_file_path)) {
-            SimpleLogger().Write() << "Reading options from: " << config_file_path.c_str();
+            SimpleLogger().Write() << "Reading options from: " << config_file_path.string();
             std::string config_str;
             PrepareConfigFile( config_file_path.c_str(), config_str );
             std::stringstream config_stream( config_str );
@@ -137,7 +135,7 @@ int main (int argc, char *argv[]) {
         }
 
         if(!option_variables.count("restrictions")) {
-            restrictions_path = std::string( input_path.c_str()) + ".restrictions";
+            restrictions_path = std::string( input_path.string()) + ".restrictions";
         }
 
         if(!option_variables.count("input")) {
@@ -157,7 +155,7 @@ int main (int argc, char *argv[]) {
 
         omp_set_num_threads( std::min( omp_get_num_procs(), requested_num_threads) );
         LogPolicy::GetInstance().Unmute();
-        std::ifstream restrictionsInstream( restrictions_path.c_str(), std::ios::binary);
+        boost::filesystem::ifstream restrictionsInstream(restrictions_path, std::ios::binary);
         TurnRestriction restriction;
         UUID uuid_loaded, uuid_orig;
         unsigned usableRestrictionsCounter(0);
@@ -179,8 +177,8 @@ int main (int argc, char *argv[]) {
         );
         restrictionsInstream.close();
 
-        std::ifstream in;
-        in.open(input_path.c_str(), std::ifstream::in|std::ifstream::binary);
+        boost::filesystem::ifstream in;
+        in.open(input_path, std::ios::in|std::ios::binary);
 
         const std::string nodeOut = input_path.string() + ".nodes";
         const std::string edgeOut = input_path.string() + ".edges";
@@ -294,7 +292,7 @@ int main (int argc, char *argv[]) {
          */
 
         SimpleLogger().Write() << "writing node map ...";
-        std::ofstream mapOutFile(nodeOut, std::ios::binary);
+        boost::filesystem::ofstream mapOutFile(nodeOut, std::ios::binary);
         const unsigned size_of_mapping = internalToExternalNodeMapping.size();
         mapOutFile.write((char *)&size_of_mapping, sizeof(unsigned));
         mapOutFile.write(
@@ -334,7 +332,7 @@ int main (int argc, char *argv[]) {
             contracted_edge_count <<
             " edges";
 
-        std::ofstream hsgr_output_stream(graphOut, std::ios::binary);
+        boost::filesystem::ofstream hsgr_output_stream(graphOut, std::ios::binary);
         hsgr_output_stream.write((char*)&uuid_orig, sizeof(UUID) );
         BOOST_FOREACH(const QueryEdge & edge, contractedEdgeList)
         {
