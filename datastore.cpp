@@ -48,6 +48,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <boost/integer.hpp>
 #include <boost/iostreams/seek.hpp>
 
+#include <fstream>
 #include <string>
 #include <vector>
 
@@ -77,8 +78,6 @@ int main( const int argc, const char * argv[] ) {
     }
 
     try {
-        SimpleLogger().Write(logDEBUG) << "Checking input parameters";
-
         bool use_shared_memory = false;
         std::string ip_address;
         int ip_port, requested_num_threads;
@@ -176,7 +175,6 @@ int main( const int argc, const char * argv[] ) {
         shared_layout_ptr->ram_index_file_name[end_of_string_index] = '\0';
 
         // collect number of elements to store in shared memory object
-        SimpleLogger().Write(logDEBUG) << "Collecting files sizes";
         SimpleLogger().Write() << "load names from: " << names_data_path;
         // number of entries in name index
         boost::filesystem::ifstream name_stream(
@@ -205,7 +203,7 @@ int main( const int argc, const char * argv[] ) {
         shared_layout_ptr->via_node_list_size = number_of_original_edges;
         shared_layout_ptr->name_id_list_size = number_of_original_edges;
         shared_layout_ptr->turn_instruction_list_size = number_of_original_edges;
-        shared_layout_ptr->geometries_compression = number_of_original_edges;
+        shared_layout_ptr->geometries_indicators = number_of_original_edges;
 
         boost::filesystem::ifstream hsgr_input_stream(
             hsgr_path,
@@ -289,8 +287,8 @@ int main( const int argc, const char * argv[] ) {
 
 
         // load geometries sizes
-        boost::filesystem::ifstream geometry_input_stream(
-            geometries_data_path,
+        std::ifstream geometry_input_stream(
+            geometries_data_path.c_str(),
             std::ios::binary
         );
         unsigned number_of_geometries_indices = 0;
@@ -302,10 +300,7 @@ int main( const int argc, const char * argv[] ) {
         geometry_input_stream.read( (char *)&number_of_compressed_geometries, sizeof(unsigned));
         shared_layout_ptr->geometries_list_size = number_of_compressed_geometries;
 
-        SimpleLogger().Write(logDEBUG) << "number_of_geometries_indices : " << number_of_geometries_indices << ", number_of_compressed_geometries: " << number_of_compressed_geometries;
-
         // allocate shared memory block
-
         SimpleLogger().Write() << "allocating shared memory of " << shared_layout_ptr->GetSizeOfLayout() << " bytes";
         SharedMemory * shared_memory = SharedMemoryFactory::Get(
             DATA,
@@ -362,17 +357,22 @@ int main( const int argc, const char * argv[] ) {
             const unsigned bucket = i / 32;
             const unsigned offset = i % 32;
             unsigned value = ((0 == offset) ? 0 : geometries_indicator_ptr[bucket]);
-            geometries_indicator_ptr[bucket] = (value | (1 << offset));
-
+            if (current_edge_data.compressed_geometry)
+            {
+                geometries_indicator_ptr[bucket] = (value | (1 << offset));
+            }
         }
         edges_input_stream.close();
 
-        //TODO: load compressed geometry
-
+        // load compressed geometry
+        unsigned temporary_value;
         unsigned * geometries_index_ptr = (unsigned *)(
             shared_memory_ptr + shared_layout_ptr->GetGeometriesIndexListOffset()
         );
-        boost::iostreams::seek(geometry_input_stream, sizeof(unsigned), BOOST_IOS::beg);
+        geometry_input_stream.seekg(0, geometry_input_stream.beg);
+        geometry_input_stream.read((char *)&temporary_value, sizeof(unsigned));
+        BOOST_ASSERT(temporary_value == shared_layout_ptr->geometries_index_list_size);
+
         geometry_input_stream.read(
             (char *)geometries_index_ptr,
             shared_layout_ptr->geometries_index_list_size*sizeof(unsigned)
@@ -381,7 +381,10 @@ int main( const int argc, const char * argv[] ) {
         unsigned * geometries_list_ptr = (unsigned *)(
             shared_memory_ptr + shared_layout_ptr->GetGeometryListOffset()
         );
-        boost::iostreams::seek(geometry_input_stream, sizeof(unsigned), BOOST_IOS::cur);
+
+        geometry_input_stream.read((char *)&temporary_value, sizeof(unsigned));
+        BOOST_ASSERT(temporary_value == shared_layout_ptr->geometries_list_size);
+
         geometry_input_stream.read(
             (char *)geometries_list_ptr,
             shared_layout_ptr->geometries_list_size*sizeof(unsigned)
@@ -428,7 +431,7 @@ int main( const int argc, const char * argv[] ) {
 
         // load the edges of the search graph
         QueryGraph::_StrEdge * graph_edge_list_ptr = (QueryGraph::_StrEdge *)(
-            shared_memory_ptr + shared_layout_ptr->GetGraphEdgeListOffsett()
+            shared_memory_ptr + shared_layout_ptr->GetGraphEdgeListOffset()
         );
         hsgr_input_stream.read(
             (char*) graph_edge_list_ptr,
@@ -479,6 +482,8 @@ int main( const int argc, const char * argv[] ) {
             }
         }
         SimpleLogger().Write() << "all data loaded";
+
+        shared_layout_ptr->PrintInformation();
     } catch(const std::exception & e) {
         SimpleLogger().Write(logWARNING) << "caught exception: " << e.what();
     }
